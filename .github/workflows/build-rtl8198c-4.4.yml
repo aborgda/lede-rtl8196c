@@ -1,0 +1,65 @@
+name: Build RTL8198C 4.4 GN866 AC and SK337
+
+on:
+  push:
+    branches: [ realtek ]
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: realtek
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-11 g++-11             flex bison gawk gettext libncurses-dev libssl-dev             python3 python-is-python3 rsync unzip file wget git             zlib1g-dev libelf-dev perl subversion bc cpio
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
+
+      - name: Prepare feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Configure RTL8198C 4.4
+        run: |
+          cat > .config <<'EOF'
+          CONFIG_TARGET_realtek=y
+          CONFIG_TARGET_realtek_rtl8198c=y
+          CONFIG_TARGET_BOARD="realtek"
+          CONFIG_TARGET_SUBTARGET="rtl8198c"
+          CONFIG_CPU_TYPE="lexra"
+          CONFIG_TARGET_OPTIMIZATION="-Os -pipe"
+          EOF
+          make defconfig
+          grep -E 'CONFIG_TARGET_realtek|CONFIG_TARGET_SUBTARGET|CONFIG_CPU_TYPE|CONFIG_LIBC' .config || true
+
+      - name: Build host tools and Lexra toolchain
+        run: |
+          make -j1 V=s tools/compile
+          make -j1 V=s toolchain/compile
+
+      - name: Build Linux 4.4 and firmware images
+        run: |
+          make -j1 V=s target/linux/compile
+          make -j1 V=s target/linux/install
+          make -j1 V=s target/linux/image/compile
+
+      - name: Verify GN866 and SK337 images
+        run: |
+          set -eux
+          find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -print
+          test -d bin/targets/realtek/rtl8198c
+          find bin/targets/realtek/rtl8198c -maxdepth 1 -type f | grep -Ei 'gn866|sk337|factory|sysupgrade|bin'
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtl8198c-linux-4.4-gn866-sk337
+          path: bin/targets/realtek/rtl8198c/**
+          if-no-files-found: error
