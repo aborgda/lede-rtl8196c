@@ -1,0 +1,51 @@
+name: Build Realtek Linux 4.4
+
+on:
+  push:
+    branches: [ realtek ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: realtek
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc g++ clang flex bison gawk gettext             libncurses5-dev libssl-dev python2 python3 rsync unzip file wget git             zlib1g-dev libelf-dev xsltproc
+      - name: Prepare feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+      - name: Configure RTL8198C
+        run: |
+          cat > .config <<'EOF'
+          CONFIG_TARGET_realtek=y
+          CONFIG_TARGET_realtek_rtl8198c=y
+          CONFIG_TARGET_BOARD="realtek"
+          CONFIG_TARGET_ARCH_PACKAGES="realtek_24kc"
+          CONFIG_CPU_TYPE="lexra"
+          CONFIG_TARGET_OPTIMIZATION="-Os -pipe -fno-caller-saves"
+          CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
+          CONFIG_PACKAGE_swconfig=y
+          EOF
+          make defconfig
+      - name: Build RTL8198C target
+        run: |
+          make -j1 V=s target/linux/compile
+          make -j1 V=s target/linux/install
+          make -j1 V=s target/linux/image/compile
+      - name: Verify images
+        run: |
+          set -eux
+          find bin/targets/realtek -maxdepth 3 -type f -print
+          test -d bin/targets/realtek/rtl8198c
+      - name: Upload images
+        uses: actions/upload-artifact@v4
+        with:
+          name: realtek-linux-4.4-rtl8198c
+          path: bin/targets/realtek/rtl8198c/**
+          if-no-files-found: error
