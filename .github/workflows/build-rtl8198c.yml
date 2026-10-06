@@ -1,0 +1,58 @@
+name: Build RTL8198C GN866 AC and SK337
+
+on:
+  push:
+    branches: [ realtek ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: realtek
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-11 g++-11             flex bison gawk gettext libncurses-dev libssl-dev             python3 python-is-python3 rsync unzip file wget git             zlib1g-dev libelf-dev perl
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
+      - name: Prepare feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+      - name: Configure GN866 and SK337
+        run: |
+          cat > .config <<'EOF'
+          CONFIG_TARGET_realtek=y
+          CONFIG_TARGET_realtek_rtl8198c=y
+          CONFIG_TARGET_BOARD="realtek"
+          CONFIG_TARGET_ARCH_PACKAGES="realtek_lexra"
+          CONFIG_CPU_TYPE="lexra"
+          CONFIG_TARGET_DEVICE_realtek_rtl8198c_GN866_AC=y
+          CONFIG_TARGET_DEVICE_realtek_rtl8198c_SK337=y
+          CONFIG_TARGET_DEVICE_realtek_rtl8198c_Default=y
+          EOF
+          make defconfig
+      - name: Build host tools and toolchain
+        run: |
+          make -j2 tools/compile
+          make -j2 toolchain/compile
+      - name: Build Linux and images
+        run: |
+          make -j2 V=s target/linux/compile
+          make -j2 V=s target/linux/install
+          make -j2 V=s target/linux/image/compile
+      - name: Verify images
+        run: |
+          set -eux
+          find bin/targets/realtek -maxdepth 2 -type f -print
+          test -d bin/targets/realtek/rtl8198c
+          find bin/targets/realtek/rtl8198c -type f
+      - name: Upload images
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtl8198c-gn866-sk337
+          path: bin/targets/realtek/rtl8198c/**
+          if-no-files-found: error
