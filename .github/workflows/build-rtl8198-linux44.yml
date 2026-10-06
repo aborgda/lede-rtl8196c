@@ -38,6 +38,28 @@ jobs:
         run: |
           make FORCE=1 -j1 V=s tools/compile
           make FORCE=1 -j1 V=s toolchain/compile
+      - name: Prepare Linux 4.4 and inject Realtek WLAN driver
+        run: |
+          set -eux
+          make FORCE=1 -j1 V=s target/linux/prepare
+          LINUX_DIR="$(find build_dir -type f -path '*/linux-4.4.*/Makefile' -print -quit | xargs -r dirname)"
+          test -n "$LINUX_DIR"
+          git clone --depth 1 https://github.com/cgoder/openwrt_rtk.git /tmp/openwrt_rtk
+          cp -a /tmp/openwrt_rtk/rtk_openwrt_sdk/target/linux/realtek/files/drivers/net/wireless/rtl8192cd "$LINUX_DIR/drivers/net/wireless/"
+          printf '\nsource "drivers/net/wireless/rtl8192cd/Kconfig"\n' >> "$LINUX_DIR/drivers/net/wireless/Kconfig"
+          printf '\nobj-$(CONFIG_RTL8192CD) += rtl8192cd/\n' >> "$LINUX_DIR/drivers/net/wireless/Makefile"
+          cat >> "$LINUX_DIR/.config" <<'EOF'
+          CONFIG_RTL8192CD=m
+          CONFIG_USE_PCIE_SLOT_0=y
+          CONFIG_SLOT_0_92C=y
+          CONFIG_USE_PCIE_SLOT_1=y
+          CONFIG_SLOT_1_8812=y
+          CONFIG_RTL_92C_SUPPORT=y
+          CONFIG_RTL_8812_SUPPORT=y
+          CONFIG_RTL_ODM_WLAN_DRIVER=y
+          CONFIG_OPENWRT_SDK=y
+          EOF
+          make -C "$LINUX_DIR" olddefconfig
       - name: Build RTL8198C Linux 4.4
         run: |
           make FORCE=1 -j1 V=s target/linux/compile
