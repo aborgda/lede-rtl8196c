@@ -18,10 +18,10 @@ jobs:
           sudo apt-get install -y build-essential gcc-11 g++-11             flex bison gawk gettext libncurses-dev libssl-dev             python3 python-is-python3 rsync unzip file wget git             zlib1g-dev libelf-dev perl
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
-      - name: Prepare feeds
+      - name: Prepare build tree
         run: |
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          rm -rf feeds
+          mkdir -p feeds
       - name: Configure GN866 and SK337
         run: |
           cat > .config <<'EOF'
@@ -32,18 +32,17 @@ jobs:
           CONFIG_CPU_TYPE="lexra"
           CONFIG_TARGET_DEVICE_realtek_rtl8198c_GN866_AC=y
           CONFIG_TARGET_DEVICE_realtek_rtl8198c_SK337=y
-          CONFIG_TARGET_DEVICE_realtek_rtl8198c_Default=y
           EOF
-          make defconfig
+          make FORCE=1 defconfig
       - name: Build host tools and toolchain
         run: |
-          make -j2 tools/compile
-          make -j2 toolchain/compile
+          make FORCE=1 -j2 tools/compile
+          make FORCE=1 -j2 toolchain/compile
       - name: Build Linux and images
         run: |
-          make -j2 V=s target/linux/compile
-          make -j2 V=s target/linux/install
-          make -j2 V=s target/linux/image/compile
+          make FORCE=1 -j1 V=s target/linux/compile
+          make FORCE=1 -j1 V=s target/linux/install
+          make FORCE=1 -j1 V=s target/linux/image/compile
       - name: Verify images
         run: |
           set -eux
