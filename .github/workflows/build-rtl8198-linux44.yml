@@ -31,6 +31,8 @@ jobs:
           CONFIG_CPU_TYPE="lexra"
           CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
           CONFIG_PACKAGE_kmod-rtl8192cd=y
+          CONFIG_PACKAGE_kmod-rtl8192er=y
+          CONFIG_PACKAGE_kmod-rtl8812er=y
           CONFIG_PACKAGE_wpad-mini=y
           CONFIG_PACKAGE_swconfig=y
           EOF
@@ -52,7 +54,9 @@ jobs:
           cat >> "$LINUX_DIR/.config" <<'EOF'
           CONFIG_RTL8192CD=m
           CONFIG_USE_PCIE_SLOT_0=y
-          CONFIG_SLOT_0_92C=y
+          CONFIG_SLOT_0_8192EE=y
+          CONFIG_WLAN_HAL_8192EE=y
+          CONFIG_RTL_ODM_WLAN_DRIVER=y
           CONFIG_USE_PCIE_SLOT_1=y
           CONFIG_SLOT_1_8812=y
           CONFIG_RTL_92C_SUPPORT=y
