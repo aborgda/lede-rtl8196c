@@ -12,7 +12,7 @@ BOARD:=realtek
 BOARDNAME:=Realtek RTL819X
 FEATURES:=squashfs
 MAINTAINER:=Weijie Gao <hackpascal@gmail.com>
-SUBTARGETS:=lexra
+SUBTARGETS:=lexra rtl8198c rtl8198
 
 KERNEL_PATCHVER:=4.4
 
