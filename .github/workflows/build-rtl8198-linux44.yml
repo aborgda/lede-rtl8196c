@@ -30,6 +30,7 @@ jobs:
           CONFIG_TARGET_realtek_rtl8198=y
           CONFIG_CPU_TYPE="lexra"
           CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
+          CONFIG_PACKAGE_kmod-rtl8192cd=y
           CONFIG_PACKAGE_wpad-mini=y
           CONFIG_PACKAGE_swconfig=y
           EOF
