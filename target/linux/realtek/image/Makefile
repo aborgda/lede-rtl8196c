@@ -133,6 +133,9 @@ define Device/RTL8198C_LEGACY
   $(Device/Default)
   CVIMG_LOADER_START_ADDR := 0x80a00000
   CVIMG_CPU_TYPE := new
+  # RTL8198C 16 MiB SPI-NOR: 128 KiB boot area + 15872 KiB firmware.
+  IMAGE_SIZE := 15872k
+  MTDPARTS := spi0.0:128k(bootloader)ro,15872k(firmware)
 endef
 
 define Device/GN866_AC
@@ -152,6 +155,7 @@ define Device/SK337
   CVIMG_KERNEL_BURN_ADDR := 0x31000
   CVIMG_ROOTFS_BURN_ADDR := 0x210000
   IMAGE_SIZE := 32256k
+  MTDPARTS := spi0.0:128k(bootloader)ro,32256k(firmware)
 endef
 TARGET_DEVICES += SK337
 
