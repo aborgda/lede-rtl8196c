@@ -21,11 +21,6 @@ jobs:
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
 
-      - name: Prepare feeds
-        run: |
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
-
       - name: Configure RTL8198C 4.4
         run: |
           cat > .config <<'EOF'
