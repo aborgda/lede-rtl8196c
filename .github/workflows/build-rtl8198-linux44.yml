@@ -18,8 +18,8 @@ jobs:
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
       - name: Prepare feeds
         run: |
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          rm -rf feeds
+          mkdir -p feeds
       - name: Configure RTL8198C and RTL8198
         run: |
           cat > .config <<'EOF'
