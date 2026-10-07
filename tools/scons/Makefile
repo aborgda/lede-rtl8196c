@@ -11,8 +11,8 @@ PKG_NAME:=scons
 PKG_VERSION:=2.5.1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=@SF/scons \
-		http://fossies.org/linux/misc/
+PKG_SOURCE_URL:=https://github.com/SCons/scons/archive/refs/tags/2.5.1.tar.gz?download=1 \
+		https://github.com/SCons/scons/releases/download/2.5.1/
 PKG_HASH:=0b25218ae7b46a967db42f2a53721645b3d42874a65f9552ad16ce26d30f51f2
 
 include $(INCLUDE_DIR)/host-build.mk
