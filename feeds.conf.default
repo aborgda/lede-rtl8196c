@@ -1,5 +1,5 @@
-# Stable LEDE 17.01 feeds for the legacy RTL819X tree.
-src-git packages https://git.lede-project.org/feed/packages.git;lede-17.01
-src-git luci https://git.lede-project.org/project/luci.git;lede-17.01
-src-git routing https://git.lede-project.org/feed/routing.git;lede-17.01
-src-git telephony https://git.lede-project.org/feed/telephony.git;lede-17.01
+# GitHub mirrors for the legacy LEDE 17.01 feed revisions.
+src-git packages https://github.com/openwrt/packages.git;lede-17.01
+src-git luci https://github.com/openwrt/luci.git;lede-17.01
+src-git routing https://github.com/openwrt/routing.git;lede-17.01
+src-git telephony https://github.com/openwrt/telephony.git;lede-17.01
