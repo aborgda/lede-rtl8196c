@@ -36,8 +36,8 @@ jobs:
           make FORCE=1 defconfig
       - name: Build host tools and toolchain
         run: |
-          make FORCE=1 -j2 tools/compile
-          make FORCE=1 -j2 toolchain/compile
+          make FORCE=1 -j1 V=s tools/compile
+          make FORCE=1 -j1 V=s toolchain/compile
       - name: Prepare Linux 4.4 and inject Realtek WLAN driver
         run: |
           set -eux
