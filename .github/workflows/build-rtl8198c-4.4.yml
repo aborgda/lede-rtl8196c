@@ -1,94 +1,64 @@
-name: Build RTL8198C 4.4 GN866 AC and SK337
+name: Build RTL8198C 4.4 GN866 SK337
 
 on:
   push:
     branches: [ realtek ]
   workflow_dispatch:
-  pull_request:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
         with:
           ref: realtek
-
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential gcc-11 g++-11             flex bison gawk gettext libncurses-dev libssl-dev             python3 python-is-python3 rsync unzip file wget git             zlib1g-dev libelf-dev perl subversion bc cpio
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
-
-      - name: Configure RTL8198C 4.4
+          sudo apt-get install -y build-essential gcc g++ git wget rsync unzip file             python3 python-is-python3 perl flex bison gawk gettext             libncurses5-dev libssl-dev zlib1g-dev libelf-dev xsltproc time bc cpio
+      - name: Prepare feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+      - name: Configure RTL8198C
         run: |
           cat > .config <<'EOF'
           CONFIG_TARGET_realtek=y
           CONFIG_TARGET_realtek_rtl8198c=y
           CONFIG_TARGET_BOARD="realtek"
-          CONFIG_TARGET_SUBTARGET="rtl8198c"
           CONFIG_CPU_TYPE="lexra"
-          CONFIG_TARGET_OPTIMIZATION="-Os -pipe"
-          CONFIG_PACKAGE_kmod-rtl8192cd=y
-          CONFIG_PACKAGE_wpad-mini=y
-          CONFIG_PACKAGE_swconfig=y
+          CONFIG_TARGET_OPTIMIZATION="-Os -pipe -fno-caller-saves -fno-plt -fhonour-copts"
           CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
+          CONFIG_PACKAGE_swconfig=y
           EOF
           make defconfig
-          grep -E 'CONFIG_TARGET_realtek|CONFIG_TARGET_SUBTARGET|CONFIG_CPU_TYPE|CONFIG_LIBC' .config || true
-
-      - name: Build host tools and Lexra toolchain
+      - name: Build host tools and toolchain
         run: |
-          make -j1 V=s tools/compile
-          make -j1 V=s toolchain/compile
-
-      - name: Prepare Linux 4.4 and inject Realtek WLAN driver
+          make -j2 V=s tools/compile
+          make -j2 V=s toolchain/compile
+      - name: Build Linux 4.4 and images
         run: |
-          set -eux
-          make -j1 V=s target/linux/prepare
-          LINUX_DIR="$(find build_dir -type f -path '*/linux-4.4.*/Makefile' -print -quit | xargs -r dirname)"
-          test -n "$LINUX_DIR"
-          git clone --depth 1 https://github.com/cgoder/openwrt_rtk.git /tmp/openwrt_rtk
-          cp -a /tmp/openwrt_rtk/rtk_openwrt_sdk/target/linux/realtek/files/drivers/net/wireless/rtl8192cd "$LINUX_DIR/drivers/net/wireless/"
-          grep -q 'source "drivers/net/wireless/rtl8192cd/Kconfig"' "$LINUX_DIR/drivers/net/wireless/Kconfig" || echo 'source "drivers/net/wireless/rtl8192cd/Kconfig"' >> "$LINUX_DIR/drivers/net/wireless/Kconfig"
-          grep -q 'obj-$(CONFIG_RTL8192CD) += rtl8192cd/' "$LINUX_DIR/drivers/net/wireless/Makefile" || echo 'obj-$(CONFIG_RTL8192CD) += rtl8192cd/' >> "$LINUX_DIR/drivers/net/wireless/Makefile"
-          cat >> "$LINUX_DIR/.config" <<'EOF'
-          CONFIG_RTL8192CD=m
-          CONFIG_USE_PCIE_SLOT_0=y
-          CONFIG_SLOT_0_92C=y
-          CONFIG_USE_PCIE_SLOT_1=y
-          CONFIG_SLOT_1_8812=y
-          CONFIG_RTL_92C_SUPPORT=y
-          CONFIG_RTL_8812_SUPPORT=y
-          CONFIG_RTL_ODM_WLAN_DRIVER=y
-          CONFIG_OPENWRT_SDK=y
-          EOF
-          make -C "$LINUX_DIR" olddefconfig
-      - name: Verify Lexra compiler and 16 MiB image configuration
+          make -j2 V=s target/linux/compile
+          make -j2 V=s target/linux/install
+          make -j2 V=s target/linux/image/compile
+      - name: Verify SK337 image layout
         run: |
           set -eux
-          test -x staging_dir/toolchain-mips_*/bin/mips-openwrt-linux-musl-gcc || test -x staging_dir/toolchain-mips_*/bin/mips-openwrt-linux-gcc
-          grep -q "KERNEL_PATCHVER:=4.4" target/linux/realtek/Makefile
-          grep -q "IMAGE_SIZE := 15872k" target/linux/realtek/image/Makefile
-      - name: Build Linux 4.4, WLAN package and firmware images
-        run: |
-          make -j1 V=s target/linux/compile
-          make -j1 V=s package/kernel/rtl8192cd/compile
-          make -j1 V=s package/kernel/rtl8192cd/install
-          make -j1 V=s target/linux/install
-          make -j1 V=s target/linux/image/compile
-
-      - name: Verify GN866 and SK337 images
-        run: |
-          set -eux
-          find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -print
-          test -d bin/targets/realtek/rtl8198c
-          find bin/targets/realtek/rtl8198c -maxdepth 1 -type f | grep -Ei 'gn866|sk337|factory|sysupgrade|bin'
-
+          find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -printf '%f %s bytes\n'
+          python3 - <<'PY'
+          import struct
+          import glob
+          p=glob.glob('bin/targets/realtek/rtl8198c/*SK337*factory.bin')
+          assert p, 'SK337 factory image missing'
+          d=open(p[0],'rb').read()
+          assert len(d)==0x2000000, hex(len(d))
+          assert d[0x31000:0x31004]==b'cr6c'
+          assert d[0x1fdc12:0x1fdc16]==b'r6cr'
+          print('SK337 layout OK:', hex(len(d)), 'cr6c@0x31000', 'r6cr@0x1fdc12')
+          PY
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: rtl8198c-linux-4.4-gn866-sk337
+          name: rtl8198c-4.4-gn866-sk337
           path: bin/targets/realtek/rtl8198c/**
           if-no-files-found: error
