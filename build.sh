@@ -6,7 +6,7 @@ cd "$ROOT"
 
 TARGET="${1:-rtl8198c}"
 MODE="${2:-firmware}"
-JOBS="${JOBS:-2}"
+JOBS="${JOBS:-1}"
 
 case "$TARGET" in
   rtl8198c|rtl8198) ;;
@@ -46,12 +46,14 @@ echo "[3/5] Download sources"
 make FORCE=1 download -j"$JOBS"
 
 echo "[4/5] Build"
+make FORCE=1 tools/compile -j"$JOBS" V=s
+make FORCE=1 toolchain/compile -j"$JOBS" V=s
 if [ "$MODE" = "sdk" ]; then
-  make FORCE=1 tools/compile -j"$JOBS" V=s
-  make FORCE=1 toolchain/compile -j"$JOBS" V=s
   make FORCE=1 target/sdk/compile -j1 V=s
 else
-  make FORCE=1 -j"$JOBS" V=s
+  make FORCE=1 target/linux/compile -j1 V=s
+  make FORCE=1 target/linux/install -j1 V=s
+  make FORCE=1 target/linux/image/compile -j1 V=s
 fi
 
 echo "[5/5] Output"
