@@ -1,0 +1,68 @@
+name: Build Realtek RTL8198C and RTL8198 Linux 4.4
+
+on:
+  push:
+    branches: [ realtek ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: realtek
+
+      - name: Install Ubuntu 20.04 build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-9 g++-9 flex bison gawk gettext             libncurses5-dev libncursesw5-dev libssl-dev python3 python-is-python3             rsync unzip file wget git zlib1g-dev libelf-dev perl subversion bc cpio             xsltproc libxml-parser-perl libjson-c-dev
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 90
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 90
+
+      - name: Update and install feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Configure RTL8198C
+        run: |
+          cat > .config <<'EOF'
+          CONFIG_TARGET_realtek=y
+          CONFIG_TARGET_realtek_rtl8198c=y
+          CONFIG_TARGET_BOARD="realtek"
+          CONFIG_TARGET_SUBTARGET="rtl8198c"
+          CONFIG_CPU_TYPE="lexra"
+          CONFIG_TARGET_OPTIMIZATION="-Os -pipe"
+          CONFIG_PACKAGE_kmod-rtl8192cd=y
+          CONFIG_PACKAGE_wpad-mini=y
+          CONFIG_PACKAGE_swconfig=y
+          CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
+          EOF
+          make FORCE=1 defconfig
+
+      - name: Build host tools and Lexra toolchain
+        run: |
+          make FORCE=1 -j1 V=s tools/compile
+          make FORCE=1 -j1 V=s toolchain/compile
+          test -x staging_dir/toolchain-mips_*/bin/mips-openwrt-linux-musl-gcc ||             test -x staging_dir/toolchain-mips_*/bin/mips-openwrt-linux-gcc
+
+      - name: Build Linux 4.4 firmware
+        run: |
+          make FORCE=1 -j1 V=s target/linux/compile
+          make FORCE=1 -j1 V=s target/linux/install
+          make FORCE=1 -j1 V=s target/linux/image/compile
+
+      - name: Verify images
+        run: |
+          set -eux
+          test -d bin/targets/realtek/rtl8198c
+          find bin/targets/realtek/rtl8198c -maxdepth 1 -type f -print
+          test -n "$(find bin/targets/realtek/rtl8198c -maxdepth 1 -type f | grep -Ei 'gn866|sk337|factory|sysupgrade|fw\.bin' | head -1)"
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtl8198c-linux44-gn866-sk337
+          path: bin/targets/realtek/rtl8198c/**
+          if-no-files-found: error
