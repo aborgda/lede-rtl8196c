@@ -1,0 +1,43 @@
+name: Legacy RTL819X Build Ubuntu 20.04
+on:
+  push:
+    branches: [ realtek ]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Target subtarget
+        required: true
+        default: rtl8198c
+        type: choice
+        options: [rtl8198c, rtl8198]
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: realtek
+      - name: Install Ubuntu 20.04 build SDK
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc g++ binutils bzip2 flex bison gawk gettext git libncurses5-dev libncursesw5-dev zlib1g-dev libssl-dev libelf-dev python3 python3-distutils rsync unzip file wget patch perl tar xz-utils subversion swig time xsltproc libc6-dev-i386 lib32gcc1 zlib1g-dev:i386
+      - name: Build without menuconfig
+        env:
+          JOBS: 2
+        run: |
+          chmod +x build.sh
+          TARGET="${{ github.event.inputs.target || 'rtl8198c' }}"
+          ./build.sh "$TARGET"
+      - name: Verify images
+        run: |
+          set -eux
+          TARGET="${{ github.event.inputs.target || 'rtl8198c' }}"
+          test -d "bin/targets/realtek/$TARGET"
+          find "bin/targets/realtek/$TARGET" -maxdepth 1 -type f -print
+          test -n "$(find "bin/targets/realtek/$TARGET" -maxdepth 1 -type f | head -1)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rtl819x-${{ github.event.inputs.target || 'rtl8198c' }}-firmware
+          path: bin/targets/realtek/${{ github.event.inputs.target || 'rtl8198c' }}/**
+          if-no-files-found: error
