@@ -148,6 +148,11 @@ define Device/GN866_AC
 endef
 TARGET_DEVICES += GN866_AC
 
+define Build/sk337
+	python3 $(TOPDIR)/target/linux/realtek/image/sk337-pack.py $@ $(IMAGE_ROOTFS) $@.new
+	mv $@.new $@
+endef
+
 define Device/SK337
   $(Device/RTL8198C_LEGACY)
   BOARDNAME := SK337
@@ -155,9 +160,12 @@ define Device/SK337
   CVIMG_KERNEL_BURN_ADDR := 0x31000
   CVIMG_ROOTFS_BURN_ADDR := 0x210000
   IMAGE_SIZE := 32256k
-  MTDPARTS := spi0.0:128k(bootloader)ro,32256k(firmware)
+  KERNEL := kernel-bin | lzma | loader-cmdline-compile
+  IMAGES := factory.bin sysupgrade.bin
+  IMAGE/factory.bin := sk337
+  IMAGE/sysupgrade.bin := sk337
 endef
-TARGET_DEVICES += SK337
+
 
 define Device/KT410
   $(Device/RTL8198C_LEGACY)
