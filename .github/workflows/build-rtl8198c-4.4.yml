@@ -65,6 +65,12 @@ jobs:
           CONFIG_OPENWRT_SDK=y
           EOF
           make -C "$LINUX_DIR" olddefconfig
+      - name: Verify Lexra compiler and 16 MiB image configuration
+        run: |
+          set -eux
+          test -x staging_dir/toolchain-mips_*/bin/mips-openwrt-linux-musl-gcc || test -x staging_dir/toolchain-mips_*/bin/mips-openwrt-linux-gcc
+          grep -q "KERNEL_PATCHVER:=4.4" target/linux/realtek/Makefile
+          grep -q "IMAGE_SIZE := 15872k" target/linux/realtek/image/Makefile
       - name: Build Linux 4.4, WLAN package and firmware images
         run: |
           make -j1 V=s target/linux/compile
