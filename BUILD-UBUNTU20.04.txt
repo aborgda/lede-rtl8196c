@@ -1,0 +1,36 @@
+# RTL819X Legacy Build Guide — Ubuntu 20.04
+
+Repository: git@github.com:aborgda/lede-rtl8196c.git
+Branch: realtek
+Kernel: Linux 4.4
+Targets: RTL8198C (GN866 AC, SK337), RTL8198 (KT410, KT510)
+
+## Dependencies
+sudo apt update
+sudo apt install -y build-essential gcc g++ binutils bzip2 flex bison gawk gettext git libncurses5-dev libncursesw5-dev zlib1g-dev libssl-dev libelf-dev python3 python3-distutils rsync unzip file wget patch perl tar xz-utils subversion swig time xsltproc
+sudo dpkg --add-architecture i386
+sudo apt update
+sudo apt install -y libc6-dev-i386 lib32gcc1 zlib1g-dev:i386
+
+## Clone
+git clone -b realtek https://github.com/aborgda/lede-rtl8196c.git
+cd lede-rtl8196c
+
+## Firmware
+chmod +x build.sh
+JOBS=2 ./build.sh rtl8198c
+JOBS=2 ./build.sh rtl8198
+
+## SDK/toolchain
+JOBS=2 ./build.sh rtl8198c sdk
+
+No make menuconfig is used. The script writes .config and runs make defconfig.
+
+## Output
+bin/targets/realtek/rtl8198c/
+bin/targets/realtek/rtl8198/
+
+## Clean rebuild
+make clean
+rm -f .config
+JOBS=2 ./build.sh rtl8198c
