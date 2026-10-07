@@ -1,0 +1,60 @@
+name: Build Realtek RTL8198C RTL8198 Linux 4.4
+
+on:
+  push:
+    branches: [ realtek ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        subtarget: [rtl8198c, rtl8198]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: realtek
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-11 g++-11 flex bison gawk gettext libncurses-dev libssl-dev python3 python-is-python3 rsync unzip file wget git zlib1g-dev libelf-dev ccache
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
+      - name: Update feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+      - name: Configure Linux 4.4
+        run: |
+          cat > .config <<'EOF'
+          CONFIG_TARGET_realtek=y
+          CONFIG_TARGET_realtek_${{ matrix.subtarget }}=y
+          CONFIG_TARGET_BOARD="realtek"
+          CONFIG_TARGET_ARCH_PACKAGES="realtek_24kc"
+          CONFIG_CPU_TYPE="lexra"
+          CONFIG_TARGET_OPTIMIZATION="-Os -pipe -fno-caller-saves"
+          CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
+          CONFIG_PACKAGE_swconfig=y
+          EOF
+          make FORCE=1 defconfig
+      - name: Build host tools and toolchain
+        run: |
+          make FORCE=1 -j2 V=s tools/compile
+          make FORCE=1 -j2 V=s toolchain/compile
+      - name: Build Linux 4.4 firmware
+        run: |
+          make FORCE=1 -j1 V=s
+      - name: Verify images
+        run: |
+          set -eux
+          test -d bin/targets/realtek/${{ matrix.subtarget }}
+          find bin/targets/realtek/${{ matrix.subtarget }} -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+          test -n "$(find bin/targets/realtek/${{ matrix.subtarget }} -maxdepth 1 -type f \( -name '*.bin' -o -name '*.img' -o -name '*.trx' \) -print -quit)"
+      - name: Upload images
+        uses: actions/upload-artifact@v4
+        with:
+          name: realtek-linux44-${{ matrix.subtarget }}
+          path: bin/targets/realtek/${{ matrix.subtarget }}/**
+          if-no-files-found: error
