@@ -65,3 +65,5 @@ fi
 
 echo
 echo "BUILD FINISHED: $TARGET"
+
+# Ubuntu 20.04 / GitHub Actions build entrypoint.
